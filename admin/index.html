@@ -12621,7 +12621,7 @@
 											<div class="field">
 												<label for="timeoutInput">超时时间 ms</label>
 												<input class="input" id="timeoutInput" type="number" min="100"
-													max="10000" step="50" value="500">
+														max="10000" step="50" value="3000">
 											</div>
 											<div class="field">
 												<label for="threadsInput">并发线程</label>
@@ -12793,7 +12793,7 @@
 					// Standalone demo mode does not need parent theme sync.
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
-				const OWN_PROBE_ENDPOINT = "https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev";
+				const OWN_PROBE_ENDPOINT = "https://eee21.albb.ccwu.cc";
 				const LOCATIONS_FALLBACK_URL = "https://wgu76989-arch.github.io/edgetunnel-pages/locations";
 				const DETECT_ENDPOINTS = {
 					ipv4: [OWN_PROBE_ENDPOINT],
@@ -13623,7 +13623,7 @@
 				async function testLatency(address, timeout, run) {
 					const parsed = parseAddressWithPort(address);
 					if (!parsed) throw new Error("地址格式无效");
-					const url = buildProbeUrl(parsed, "ip.json");
+					const url = buildLatencyProbeUrl(parsed);
 
 					await testOptionsConnectivity(url, timeout * 2, run);
 
@@ -13631,7 +13631,11 @@
 					const response = await fetchWithTimeout(url, { method: "GET", timeout, run });
 					if (!response.ok) throw new Error("GET 不可用");
 					const data = await response.json();
-					const latency = Math.max(1, Math.round(performance.now() - started));
+					const requestLatency = Math.max(1, Math.round(performance.now() - started));
+					const relayLatency = Number(data.probeLatency);
+					const latency = Number.isFinite(relayLatency) && relayLatency >= 0
+						? Math.max(1, Math.round(relayLatency))
+						: requestLatency;
 					if (latency > timeout) throw new Error("延迟超过超时时间");
 					const official = isOfficialPreferredIp(data);
 					const responseIpType = data.ipType || "";
@@ -14979,6 +14983,15 @@
 						if (ip && port >= 1 && port <= 65535) return { family: "ipv6", ip, port };
 					}
 					return null;
+				}
+
+				function buildLatencyProbeUrl(parsed) {
+					const search = new URLSearchParams({
+						_t: String(Date.now()),
+						ip: parsed.ip,
+						port: String(parsed.port)
+					});
+					return `${OWN_PROBE_ENDPOINT}/probe?${search.toString()}`;
 				}
 
 				function buildProbeUrl(parsed, path, params = {}) {
