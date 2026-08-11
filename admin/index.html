@@ -12794,6 +12794,7 @@
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
 				const OWN_PROBE_ENDPOINT = "https://eee21.albb.ccwu.cc";
+				const SPEED_TEST_SECONDS = 15;
 				const LOCATIONS_FALLBACK_URL = "https://wgu76989-arch.github.io/edgetunnel-pages/locations";
 				const DETECT_ENDPOINTS = {
 					ipv4: [OWN_PROBE_ENDPOINT],
@@ -13746,7 +13747,7 @@
 					if (!result || result.speedState === "testing") return;
 					const run = { stopped: false, controllers: new Set() };
 					result.speedState = "testing";
-					result.speedRemaining = 10;
+					result.speedRemaining = SPEED_TEST_SECONDS;
 					renderResults();
 					try {
 						const speed = await testDownloadSpeed(result.parsed, run, ({ remaining, speedMbps }) => {
@@ -13796,7 +13797,7 @@
 					await runPool(targets, concurrency, async ({ result }) => {
 						if (run.stopped) return;
 						result.speedState = "testing";
-						result.speedRemaining = 10;
+						result.speedRemaining = SPEED_TEST_SECONDS;
 						renderResults();
 						try {
 							const speed = await testDownloadSpeed(result.parsed, run, ({ remaining, speedMbps }) => {
@@ -13917,7 +13918,7 @@
 					await runPool(state.results, concurrency, async (result) => {
 						if (run.stopped) return;
 						result.speedState = "testing";
-						result.speedRemaining = 10;
+						result.speedRemaining = SPEED_TEST_SECONDS;
 						renderResults();
 						try {
 							const speed = await testDownloadSpeed(result.parsed, run, ({ remaining, speedMbps }) => {
@@ -13965,16 +13966,12 @@
 				}
 
 				async function testDownloadSpeed(parsed, run, onProgress) {
-					const url = buildProbeUrl(parsed, "__down", { bytes: "20000000" });
+					const url = buildSpeedProbeUrl(parsed, { bytes: "20000000" });
 					const controller = new AbortController();
-					const maxDuration = 10000;
-					let timedOut = false;
-					let totalBytes = 0;
+					const maxDuration = SPEED_TEST_SECONDS * 1000;
 					let started = 0;
-					let lastRemaining = 10;
 					let ticker = null;
 					const timeout = window.setTimeout(() => {
-						timedOut = true;
 						controller.abort();
 					}, maxDuration);
 					if (run) {
@@ -13982,63 +13979,34 @@
 						if (run.stopped) controller.abort();
 					}
 
-					const finishSpeed = () => {
-						const elapsed = Math.max(1, performance.now() - started);
-						return totalBytes > 0 ? (totalBytes * 8) / (elapsed / 1000) / 1000000 : 0;
-					};
 					const reportProgress = () => {
 						const elapsed = performance.now() - started;
 						const remaining = Math.max(0, Math.ceil((maxDuration - elapsed) / 1000));
-						const speedMbps = finishSpeed();
-						if (remaining !== lastRemaining) {
-							lastRemaining = remaining;
-							if (typeof onProgress === "function") onProgress({ remaining, speedMbps });
-							return;
-						}
-						if (typeof onProgress === "function") onProgress({ remaining, speedMbps });
+						if (typeof onProgress === "function") onProgress({ remaining, speedMbps: 0 });
 					};
 
 					try {
 						started = performance.now();
-						if (typeof onProgress === "function") onProgress({ remaining: 10, speedMbps: 0 });
+						if (typeof onProgress === "function") onProgress({ remaining: SPEED_TEST_SECONDS, speedMbps: 0 });
 						ticker = window.setInterval(reportProgress, 250);
 						const response = await fetch(url, {
 							method: "GET",
 							cache: "no-store",
 							signal: controller.signal
 						});
-						if (!response.ok) throw new Error("下载失败");
-
-						if (!response.body || !response.body.getReader) {
-							const buffer = await response.arrayBuffer();
-							totalBytes = buffer.byteLength;
-							if (typeof onProgress === "function") onProgress({ remaining: 0, speedMbps: finishSpeed() });
-							return finishSpeed();
+						if (!response.ok) {
+							let message = "测速失败";
+							try {
+								const errorData = await response.json();
+								if (errorData && errorData.error) message = String(errorData.error);
+							} catch (error) { }
+							throw new Error(message);
 						}
-
-						const reader = response.body.getReader();
-
-						while (true) {
-							if (performance.now() - started >= maxDuration) {
-								timedOut = true;
-								controller.abort();
-								break;
-							}
-							const { done, value } = await reader.read();
-							if (done) break;
-							const size = value.byteLength || value.length || 0;
-							totalBytes += size;
-							reportProgress();
-						}
-
-						if (typeof onProgress === "function") onProgress({ remaining: 0, speedMbps: finishSpeed() });
-						return finishSpeed();
-					} catch (error) {
-						if (timedOut && totalBytes > 0) {
-							if (typeof onProgress === "function") onProgress({ remaining: 0, speedMbps: finishSpeed() });
-							return finishSpeed();
-						}
-						throw error;
+						const data = await response.json();
+						const speedMbps = Number(data && data.speedMbps);
+						if (!Number.isFinite(speedMbps) || speedMbps <= 0) throw new Error("测速结果无效");
+						if (typeof onProgress === "function") onProgress({ remaining: 0, speedMbps });
+						return speedMbps;
 					} finally {
 						window.clearTimeout(timeout);
 						if (ticker) window.clearInterval(ticker);
@@ -14992,6 +14960,16 @@
 						port: String(parsed.port)
 					});
 					return `${OWN_PROBE_ENDPOINT}/probe?${search.toString()}`;
+				}
+
+				function buildSpeedProbeUrl(parsed, params = {}) {
+					const search = new URLSearchParams({
+						_t: String(Date.now()),
+						ip: parsed.ip,
+						port: String(parsed.port),
+						...params
+					});
+					return `${OWN_PROBE_ENDPOINT}/speed?${search.toString()}`;
 				}
 
 				function buildProbeUrl(parsed, path, params = {}) {
