@@ -12793,7 +12793,10 @@
 					// Standalone demo mode does not need parent theme sync.
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
-				const DETECT_ENDPOINTS = { ipv4: [], ipv6: [] };
+				const DETECT_ENDPOINTS = {
+					ipv4: ["https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev"],
+					ipv6: ["https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev"]
+				};
 				function expandWildcardEndpoints(endpoints) {
 					return endpoints.map(ep => ep.replace(/\*\*/g, () => Math.floor(Math.random() * 255 + 1).toString(16).padStart(2, '0')));
 				}
