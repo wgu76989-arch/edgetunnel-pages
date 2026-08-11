@@ -9754,7 +9754,7 @@
 
 					<div id="generatorSection" class="form-group hidden-section">
 						<label for="generatorURL">优选订阅生成器</label>
-						<input type="text" id="generatorURL" title="优选订阅生成器" placeholder="sub.cmliussss.net"
+						<input type="text" id="generatorURL" title="优选订阅生成器" placeholder="wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev"
 							onchange="processGeneratorURL()" oninput="processGeneratorURL()">
 					</div>
 
@@ -10072,7 +10072,7 @@
 						<div class="form-group">
 							<label for="proxyIP">PROXYIP</label>
 							<div class="input-wrapper">
-								<input type="text" id="proxyIP" title="PROXYIP" placeholder="proxyip.cmliussss.net"
+								<input type="text" id="proxyIP" title="PROXYIP" placeholder="your-proxyip.example.com:443"
 									onchange="processProxyIP()" oninput="processProxyIP()">
 								<div class="checkbox-group">
 									<input type="checkbox" id="autoProxy" title="启用自动获取: 使用默认内置的PROXYIP"
@@ -10233,7 +10233,7 @@
 						<label for="subAPI">订阅转换后端</label>
 						<div class="readonly-wrapper" onclick="openSubAPIModal()">
 							<input type="text" id="subAPI" title="订阅转换后端" readonly
-								placeholder="https://SUBAPI.cmliussss.net" class="subapi-input">
+								placeholder="https://your-subconverter.example.com" class="subapi-input">
 						</div>
 					</div>
 
@@ -10674,7 +10674,7 @@
 				<div class="form-group subapi-form-group">
 					<label>UsageAPI地址</label>
 					<input type="text" id="cloudflareUsageAPI"
-						placeholder="https://usagepanel.pages.dev/usage.json?token=4941477918857b30d8234ac19441ebb2">
+						placeholder="https://wgu76989-arch.github.io/edgetunnel-usage-panel/usage.json?token=YOUR_TOKEN">
 					<small style="font-size: 12px; color: #9ca3af; margin-top: 6px; display: block;">💡 支持多账号汇总，可通过部署 <a
 							href="https://github.com/wgu76989-arch/edgetunnel-usage-panel" target="_blank" rel="noopener"
 							style="color: #3b82f6; text-decoration: none;">UsagePanel</a> 项目获取 UsageAPI 地址</small>
@@ -12793,22 +12793,7 @@
 					// Standalone demo mode does not need parent theme sync.
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
-				const DETECT_ENDPOINTS = {
-					ipv4: [
-						"https://671F04**.bestcf.cmliussss.hidns.vip",
-						"https://6CA2C0**.bestcf.cmliussss.hidns.vip",
-						"https://BC7260**.bestcf.cmliussss.hidns.vip",
-						"https://681000**.bestcf.cmliussss.hidns.vip",
-						"https://681800**.bestcf.cmliussss.hidns.vip",
-						"https://AC4000**.bestcf.cmliussss.hidns.vip"
-					],
-					ipv6: [
-						"https://2606-4700--**.bestcf.cmliussss.hidns.vip",
-						"https://2606-4700--1000-**.bestcf.cmliussss.hidns.vip",
-						"https://2606-4700--2000-**.bestcf.cmliussss.hidns.vip",
-						"https://2606-4700--3000-**.bestcf.cmliussss.hidns.vip"
-					]
-				};
+				const DETECT_ENDPOINTS = { ipv4: [], ipv6: [] };
 				function expandWildcardEndpoints(endpoints) {
 					return endpoints.map(ep => ep.replace(/\*\*/g, () => Math.floor(Math.random() * 255 + 1).toString(16).padStart(2, '0')));
 				}
@@ -14926,11 +14911,9 @@
 				}
 
 				function buildProbeUrl(parsed, path, params = {}) {
-					const label = parsed.family === "ipv4"
-						? ipv4ToHexLabel(parsed.ip)
-						: parsed.ip.toLowerCase().replace(/:/g, "-");
+					const probeHost = parsed.family === "ipv4" ? parsed.ip : `[${parsed.ip}]`;
 					const search = new URLSearchParams({ _t: String(Date.now()), ...params });
-					return `https://${label}.bestcf.cmliussss.hidns.vip:${parsed.port}/${path}?${search.toString()}`;
+					return `https://${probeHost}:${parsed.port}/${path}?${search.toString()}`;
 				}
 
 				function ipv4ToHexLabel(ip) {
@@ -15898,7 +15881,7 @@
 						</div>
 						<div class="auth-example-item">
 							<h4>优选订阅生成器</h4>
-							<pre>sub://sub.cmliussss.net#CM优选订阅</pre>
+							<pre>sub://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev#独立Worker订阅</pre>
 						</div>
 					</div>
 
@@ -21240,7 +21223,7 @@
 				const socketsVariantResult = randomizeSnippetLiteralOccurrences(dictionaryAppliedScript, 'cloudflare:sockets');
 				const proxyipVariantResult = randomizeSnippetLiteralOccurrences(
 					socketsVariantResult.code,
-					'proxyip.cmliussss.net',
+					'your-proxyip.example.com',
 					{ randomizeCase: true }
 				);
 				const finalScript = proxyipVariantResult.code;
@@ -21253,7 +21236,7 @@
 				}
 				if (proxyipVariantResult.occurrences > 0) {
 					variantSummaries.push(
-						`proxyip.cmliussss.net ${proxyipVariantResult.occurrences} 处 / ${proxyipVariantResult.changedLetters} 个大小写扰动 / ${proxyipVariantResult.escapedChars} 个 Unicode 转义`
+						`your-proxyip.example.com ${proxyipVariantResult.occurrences} 处 / ${proxyipVariantResult.changedLetters} 个大小写扰动 / ${proxyipVariantResult.escapedChars} 个 Unicode 转义`
 					);
 				}
 
@@ -21794,7 +21777,7 @@
 					if (!response.ok) throw new Error('Primary API failed');
 				} catch (e) {
 					console.warn('Primary IP API failed, trying fallback...', e);
-					response = await fetch(`https://api.090227.xyz/api/ipapi?ip=${cleanIp}`);
+					response = await fetch(`https://api.ipapi.is/?q=${cleanIp}`);
 					if (!response.ok) throw new Error('Fallback API failed');
 				}
 
@@ -23057,8 +23040,7 @@
 			const confirmBtn = document.getElementById('telegramConfirmBtn');
 			const testBtn = event.target;
 			const telegramApiBases = [
-				'https://api.telegram.org',
-				'https://api.tg.090227.xyz'
+				'https://api.telegram.org'
 			];
 
 			async function requestTelegram(endpoint, params = null, preferredBase = null) {
@@ -24077,11 +24059,7 @@
 		// 智能镜像拉取函数 - 原始地址与镜像并发抢占，谁先成功就用谁
 		async function fetchWithAutoMirror(originalUrl, description = '资源') {
 			const rawGithubPrefix = 'https://raw.githubusercontent.com';
-			const mirrorDomains = [
-				'https://github.090227.xyz/raw.githubusercontent.com',
-				'https://github.cmliussss.com/raw.githubusercontent.com',
-				'https://github.cmliussss.net/raw.githubusercontent.com',
-			];
+			const mirrorDomains = [];
 			const candidates = [{ url: originalUrl, label: '原始链接' }];
 
 			if (originalUrl.startsWith(rawGithubPrefix)) {
@@ -24608,7 +24586,7 @@
 			const apis = [
 				{
 					name: 'cm-cf',
-					url: `https://api.090227.xyz/api/ipsb?ip=${encodeURIComponent(requestIp)}`
+					url: `https://api.ipapi.is/?q=${encodeURIComponent(requestIp)}`
 				}
 			];
 
@@ -24818,7 +24796,7 @@
 					parse: d => ({ ip: d.ip, loc: `${d.location?.country_code || '未知'} AS${d.asn?.asn || ''} ${d.asn?.org || ''}`.trim() })
 				},
 				{
-					url: `https://api.cmliussss.net/api/ipinfo`,
+					url: `https://api.ipapi.is`,
 					parse: d => ({ ip: d.ip, loc: `${d.country_code || '未知'} ${d.asn || ''} ${d.as_name || ''}`.trim() })
 				}
 			];
@@ -25003,8 +24981,8 @@
 
 			const timestamp = Date.now();
 			const endpoints = [
-				{ url: 'https://ipv4.090227.xyz' },
-				{ url: 'https://ipv6.090227.xyz' }
+				{ url: 'https://api.ipify.org?format=json' },
+				{ url: 'https://api64.ipify.org?format=json' }
 			];
 
 			try {
@@ -25772,7 +25750,9 @@
 			window[config.verificationTimeouts][proxyIp] = timeoutId;
 
 			try {
-				const response = await fetch(`https://api.090227.xyz/check?proxyip=${proxyIp}`, { signal });
+				const checkUrl = new URL('/admin/check', window.location.origin);
+				checkUrl.searchParams.set('https', proxyIp);
+				const response = await fetch(checkUrl, { signal });
 				clearTimeout(window[config.verificationTimeouts][proxyIp]);
 
 				if (response.ok) {
