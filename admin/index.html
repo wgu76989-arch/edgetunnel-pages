@@ -24674,14 +24674,27 @@
 		}
 
 		function formatIpInfoLocation(info) {
-			const countryCode = String(info?.country_code || '未知').trim() || '未知';
-			const rawAsn = info?.asn;
+			const countryCode = String(
+				info?.country_code ||
+				info?.cc ||
+				info?.location?.country_code ||
+				info?.country?.code ||
+				'未知'
+			).trim().toUpperCase() || '未知';
+			const rawAsn = info?.asn_num ?? (
+				info?.asn && typeof info.asn === 'object'
+					? (info.asn.asn ?? info.asn.number)
+					: info?.asn
+			);
 			const asnText = rawAsn === undefined || rawAsn === null
 				? ''
 				: (/^\d+$/.test(String(rawAsn).trim()) ? `AS${String(rawAsn).trim()}` : String(rawAsn).trim());
 			const asnName = String(
 				info?.as_name ||
+				info?.company_name ||
+				info?.asn_org ||
 				info?.asn_organization ||
+				info?.asn?.org ||
 				info?.organization ||
 				info?.isp ||
 				''
@@ -24857,11 +24870,11 @@
 			const apis = [
 				{
 					url: `https://api.ipapi.is`,
-					parse: d => ({ ip: d.ip, loc: `${d.location?.country_code || '未知'} AS${d.asn?.asn || ''} ${d.asn?.org || ''}`.trim() })
+					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				},
 				{
 					url: `https://api.ipapi.is`,
-					parse: d => ({ ip: d.ip, loc: `${d.country_code || '未知'} ${d.asn || ''} ${d.as_name || ''}`.trim() })
+					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				}
 			];
 
@@ -24959,8 +24972,8 @@
 		}
 
 		function formatCloudFlareLocation(data) {
-			const country = String(data?.country || '').trim();
-			const org = String(data?.org || '').trim();
+			const country = String(data?.country || data?.country_code || data?.cc || '').trim().toUpperCase();
+			const org = String(data?.org || data?.company_name || data?.asn_org || '').trim();
 			return `${country} ${org}`.trim() || '未知';
 		}
 
@@ -25052,7 +25065,9 @@
 			try {
 				const requestResults = await Promise.allSettled(
 					endpoints.map(async endpoint => {
-						const response = await fetchWithTimeout(`${endpoint.url}/?_t=${timestamp}`, { cache: 'no-store' });
+						const requestUrl = new URL(endpoint.url);
+						requestUrl.searchParams.set('_t', String(timestamp));
+						const response = await fetchWithTimeout(requestUrl.toString(), { cache: 'no-store' });
 						if (!response.ok) {
 							throw new Error(`HTTP ${response.status}`);
 						}
@@ -25064,11 +25079,13 @@
 							throw new Error(`invalid ip payload: ${ip || 'empty'}`);
 						}
 
-						return {
-							ip,
-							version,
-							loc: formatCloudFlareLocation(data)
-						};
+						let loc = formatCloudFlareLocation(data);
+						try {
+							loc = formatIpInfoLocation(await fetchIpInfoByIp(ip));
+						} catch (error) {
+							console.log(`[CloudFlare] ${ip} 归属查询失败: ${error.message}`);
+						}
+						return { ip, version, loc };
 					})
 				);
 
