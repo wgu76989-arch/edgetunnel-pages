@@ -18277,8 +18277,10 @@
 			if (onlineOptimizeBtn) {
 				if (mode === 'custom') {
 					onlineOptimizeBtn.classList.remove('hidden-section');
+					onlineOptimizeBtn.disabled = false;
 				} else {
 					onlineOptimizeBtn.classList.add('hidden-section');
+					onlineOptimizeBtn.disabled = true;
 				}
 			}
 			if (apiOptimizeBtn) {
