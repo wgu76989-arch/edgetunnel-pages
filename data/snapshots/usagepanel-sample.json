@@ -1,0 +1,67 @@
+{
+  "success": true,
+  "pages": 1975,
+  "workers": 3283,
+  "total": 5258,
+  "max": 500000,
+  "resources": {
+    "d1": {
+      "rowsRead": 0,
+      "rowsReadLimit": 25000000,
+      "rowsWritten": 0,
+      "rowsWrittenLimit": 500000,
+      "readQueries": 0,
+      "writeQueries": 0,
+      "storageBytes": 0,
+      "storageLimitBytes": 26843545600,
+      "databases": 0,
+      "period": "day"
+    },
+    "kv": {
+      "reads": 100,
+      "readsLimit": 500000,
+      "writes": 30,
+      "writesLimit": 5000,
+      "deletes": 0,
+      "deletesLimit": 5000,
+      "lists": 0,
+      "listsLimit": 5000,
+      "operations": 130,
+      "storageBytes": 6720,
+      "storageLimitBytes": 5368709120,
+      "keys": 3,
+      "namespaces": 2,
+      "period": "day"
+    },
+    "r2": {
+      "classA": 0,
+      "classALimit": 5000000,
+      "classB": 0,
+      "classBLimit": 50000000,
+      "free": 0,
+      "other": 0,
+      "operations": 0,
+      "storageBytes": 0,
+      "storageLimitBytes": 53687091200,
+      "objects": 0,
+      "buckets": 0,
+      "period": "month"
+    }
+  },
+  "UpdateTime": 1786450538805,
+  "msg": "✅ 成功更新免费额度使用数据（本次刷新 0 个账号，5 个使用历史数据）",
+  "RefreshStats": {
+    "refreshed": 0,
+    "failed": 0,
+    "cached": 5,
+    "skippedByLimit": 0,
+    "maxRefresh": 0,
+    "externalSubrequestsEstimated": 0,
+    "externalSubrequestLimit": 50,
+    "perAccountExternalSubrequests": {
+      "withAccountId": 4,
+      "withoutAccountId": 5
+    },
+    "thresholdMs": 1200000
+  }
+}
