@@ -12793,21 +12793,27 @@
 					// Standalone demo mode does not need parent theme sync.
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
+				const OWN_PROBE_ENDPOINT = "https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev";
+				const LOCATIONS_FALLBACK_URL = "https://wgu76989-arch.github.io/edgetunnel-pages/locations";
 				const DETECT_ENDPOINTS = {
-					ipv4: ["https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev"],
-					ipv6: ["https://wgu-edgetunnel-independent.dogwalkerguwanfu.workers.dev"]
+					ipv4: [OWN_PROBE_ENDPOINT],
+					ipv6: [OWN_PROBE_ENDPOINT]
+				};
+				const FALLBACK_IP_ENDPOINTS = {
+					ipv4: ["https://api.ipapi.is", "https://api4.ipify.org/?format=json", "https://api.ipify.org/?format=json"],
+					ipv6: ["https://api64.ipify.org/?format=json"]
 				};
 				function expandWildcardEndpoints(endpoints) {
 					return endpoints.map(ep => ep.replace(/\*\*/g, () => Math.floor(Math.random() * 255 + 1).toString(16).padStart(2, '0')));
 				}
 				const IP_LIBRARIES = [
-					{ label: "CF官方列表v4", family: "ipv4", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/cf-090227-ips-v4.txt" },
-					{ label: "CF官方列表v6", family: "ipv6", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/cf-090227-ips-v6.txt" },
-					{ label: "CM优选列表v4", family: "ipv4", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/CF-CIDR.txt" },
-					{ label: "AS13335列表v4", family: "ipv4", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/asn13335-ipv4.txt" },
-					{ label: "AS13335列表v6", family: "ipv6", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/asn13335-ipv6.txt" },
-					{ label: "AS209242列表v4", family: "ipv4", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/asn209242-ipv4.txt" },
-					{ label: "AS209242列表v6", family: "ipv6", url: "https://raw.githubusercontent.com/wgu76989-arch/edgetunnel-data/main/local-snapshots/asn209242-ipv6.txt" }
+					{ label: "CF官方列表v4", family: "ipv4", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/cf-090227-ips-v4.txt" },
+					{ label: "CF官方列表v6", family: "ipv6", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/cf-090227-ips-v6.txt" },
+					{ label: "CM优选列表v4", family: "ipv4", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/CF-CIDR.txt" },
+					{ label: "AS13335列表v4", family: "ipv4", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/asn13335-ipv4.txt" },
+					{ label: "AS13335列表v6", family: "ipv6", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/asn13335-ipv6.txt" },
+					{ label: "AS209242列表v4", family: "ipv4", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/asn209242-ipv4.txt" },
+					{ label: "AS209242列表v6", family: "ipv6", url: "https://wgu76989-arch.github.io/edgetunnel-pages/data/snapshots/asn209242-ipv6.txt" }
 				];
 				const LIBRARY_SELECTION_CACHE_KEY = "bestcf:selected-ip-library";
 				const SAVE_EASTER_SHAKE_DELAY_MS = 618;
@@ -13236,21 +13242,76 @@
 				}
 
 				async function detectStack(family) {
-					const { endpoint, data } = await fetchJsonFromFastestEndpoint(expandWildcardEndpoints(DETECT_ENDPOINTS[family]), "ip.json", 6500);
-					const allowed = data.country === "CN";
-					return {
-						status: "done",
-						allowed,
-						endpoint,
-						ip: data.ip || "",
-						ipType: data.ipType || family,
-						country: data.country || "未知",
-						cnIspCode: data.cnIspCode || "",
-						preferredType: preferredTypeFromCnIspCode(data.cnIspCode),
-						colo: data.colo || "",
-						asn: data.asn || "",
-						raw: data
-					};
+					try {
+						const { endpoint, data } = await fetchJsonFromFastestEndpoint(expandWildcardEndpoints(DETECT_ENDPOINTS[family]), "ip.json", 3000);
+						const allowed = data.country === "CN";
+						return {
+							status: "done",
+							allowed,
+							endpoint,
+							ip: data.ip || "",
+							ipType: data.ipType || family,
+							country: data.country || "未知",
+							cnIspCode: data.cnIspCode || "",
+							preferredType: preferredTypeFromCnIspCode(data.cnIspCode),
+							colo: data.colo || "",
+							asn: data.asn || "",
+							raw: data
+						};
+					} catch (primaryError) {
+						try {
+							return await detectStackFromFallback(family);
+						} catch (fallbackError) {
+							throw new Error(fallbackError && fallbackError.message ? fallbackError.message : primaryError.message);
+						}
+					}
+				}
+
+				async function detectStackFromFallback(family) {
+					let lastError = null;
+					for (const endpoint of FALLBACK_IP_ENDPOINTS[family] || []) {
+						try {
+							const separator = endpoint.includes("?") ? "&" : "?";
+							const response = await fetchWithTimeout(`${endpoint}${separator}_t=${Date.now()}`, { method: "GET", timeout: 5000 });
+							if (!response.ok) throw new Error(`${endpoint} HTTP ${response.status}`);
+							const ipPayload = await response.json();
+							const ip = String(ipPayload && ipPayload.ip ? ipPayload.ip : "").trim();
+							const ipType = ip.includes(":") ? "ipv6" : "ipv4";
+							if (!ip || ipType !== family) throw new Error(`${family.toUpperCase()} 地址不可用`);
+
+							const detailUrl = `https://api.ipapi.is/?q=${encodeURIComponent(ip)}&_t=${Date.now()}`;
+							const detailResponse = await fetchWithTimeout(detailUrl, { method: "GET", timeout: 5000 });
+							if (!detailResponse.ok) throw new Error(`IP 归属地查询 HTTP ${detailResponse.status}`);
+							const detail = await detailResponse.json();
+							const country = String(detail.location && detail.location.country_code || detail.country_code || detail.cc || detail.country && detail.country.code || "ZZ").toUpperCase();
+							const cnIspCode = detail.asn_org || detail.company_name || detail.asn && (detail.asn.org || detail.asn.as_name || detail.asn.name) || "";
+							const data = {
+								ip,
+								ipType,
+								country,
+								cnIspCode,
+								colo: detail.colo || "",
+								asn: detail.asn_num || detail.asn && (detail.asn.asn || detail.asn) || "",
+								source: "browser-fallback"
+							};
+							return {
+								status: "done",
+								allowed: country === "CN",
+								endpoint: "",
+								ip,
+								ipType,
+								country,
+								cnIspCode,
+								preferredType: preferredTypeFromCnIspCode(cnIspCode),
+								colo: "",
+								asn: data.asn,
+								raw: data
+							};
+						} catch (error) {
+							lastError = error;
+						}
+					}
+					throw lastError || new Error("备用 IP 检测失败");
 				}
 
 				async function loadLocations() {
@@ -13259,7 +13320,14 @@
 					if (state.ipv6 && state.network.ipv6 && state.network.ipv6.endpoint) endpoints.push(state.network.ipv6.endpoint);
 
 					try {
-						const { data: locations } = await fetchJsonFromFastestEndpoint([...new Set(endpoints)], "locations", 8000);
+						let locations;
+						try {
+							locations = endpoints.length
+								? (await fetchJsonFromFastestEndpoint([...new Set(endpoints)], "locations", 4000)).data
+								: await fetchJson(LOCATIONS_FALLBACK_URL, 8000);
+						} catch (primaryError) {
+							locations = await fetchJson(LOCATIONS_FALLBACK_URL, 8000);
+						}
 						if (!Array.isArray(locations)) throw new Error("locations 响应格式无效");
 						state.locations = locations;
 						state.locationsByIata = new Map(
