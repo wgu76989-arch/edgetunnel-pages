@@ -24706,13 +24706,17 @@
 		}
 
 		function formatIpInfoLocation(info) {
-			const countryCode = String(
+			const countryValue = String(
 				info?.country_code ||
 				info?.cc ||
 				info?.location?.country_code ||
 				info?.country?.code ||
+				info?.country ||
 				'未知'
-			).trim().toUpperCase() || '未知';
+			).trim();
+			const countryCode = /^[a-z]{2}$/i.test(countryValue)
+				? countryValue.toUpperCase()
+				: (countryValue || '未知');
 			const rawAsn = info?.asn_num ?? (
 				info?.asn && typeof info.asn === 'object'
 					? (info.asn.asn ?? info.asn.number)
@@ -24728,6 +24732,8 @@
 				info?.asn_organization ||
 				info?.asn?.org ||
 				info?.organization ||
+				info?.org ||
+				info?.cnIspCode ||
 				info?.isp ||
 				''
 			).trim();
@@ -24901,11 +24907,18 @@
 			// API 配置：URL + 字段映射
 			const apis = [
 				{
-					url: `https://api.ipapi.is`,
+					name: 'ipinfo.io',
+					url: 'https://ipinfo.io/json',
 					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				},
 				{
-					url: `https://api.ipapi.is`,
+					name: 'ipify IPv6/IPv4',
+					url: 'https://api64.ipify.org?format=json',
+					parse: d => ({ ip: d.ip, loc: '未知' })
+				},
+				{
+					name: '自有 Worker',
+					url: `${OWN_PROBE_ENDPOINT}/ip.json`,
 					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				}
 			];
@@ -24926,7 +24939,7 @@
 
 						return { edgeIp, loc, url: api.url };
 					})().catch(error => {
-						console.log(`[国外测试] ${api.url} 失败: ${error.message}`);
+						console.log(`[国外测试] ${api.name} ${api.url} 失败: ${error.message}`);
 						throw error;
 					})
 				};
