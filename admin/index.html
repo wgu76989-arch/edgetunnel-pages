@@ -24254,7 +24254,6 @@
 		];
 		const NETWORK_API_TIMEOUT_MS = 6180.3;
 		const NETWORK_BACKGROUND_START_DELAY_MS = 0;
-		const NETWORK_BACKGROUND_IDLE_TIMEOUT_MS = 2500;
 		const NETWORK_BACKGROUND_TASK_TIMEOUT_MS = (NETWORK_API_TIMEOUT_MS * 3) + 1200;
 		let networkInfoScheduled = false;
 		let networkInfoLoadPromise = null;
@@ -24266,17 +24265,6 @@
 
 			return new Promise(resolve => {
 				window.addEventListener('load', resolve, { once: true });
-			});
-		}
-
-		function waitForBrowserIdle(timeoutMs = NETWORK_BACKGROUND_IDLE_TIMEOUT_MS) {
-			return new Promise(resolve => {
-				if ('requestIdleCallback' in window) {
-					window.requestIdleCallback(() => resolve(), { timeout: timeoutMs });
-					return;
-				}
-
-				setTimeout(resolve, 0);
 			});
 		}
 
@@ -24297,7 +24285,6 @@
 				if (delayMs > 0) {
 					await waitForDelay(delayMs);
 				}
-				await waitForBrowserIdle();
 				await loadNetworkInfo();
 			})().catch(error => {
 				console.warn('[网络信息] 后台加载调度失败:', error);
