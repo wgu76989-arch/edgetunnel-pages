@@ -12794,6 +12794,7 @@
 				}
 				const TLS_PORTS = [443, 2053, 2083, 2087, 2096, 8443];
 				const OWN_PROBE_ENDPOINT = "https://121ko.albb.ccwu.cc";
+				window.__EDT_OWN_PROBE_ENDPOINT = OWN_PROBE_ENDPOINT;
 				const SPEED_TEST_SECONDS = 15;
 				const LOCATIONS_FALLBACK_URL = "https://wgu76989-arch.github.io/edgetunnel-pages/locations";
 				const DETECT_ENDPOINTS = {
@@ -24929,7 +24930,7 @@
 			const apis = [
 				{
 					name: '自有 Worker',
-					url: `${OWN_PROBE_ENDPOINT}/ip.json`,
+					url: `${window.__EDT_OWN_PROBE_ENDPOINT || 'https://121ko.albb.ccwu.cc'}/ip.json`,
 					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				},
 				{
