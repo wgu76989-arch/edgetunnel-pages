@@ -24904,7 +24904,7 @@
 		// 获取国外测试数据
 		async function fetchOverseasTestData() {
 			setStatus('status-overseas', 'loading');
-			// API 配置：URL + 字段映射
+			// API 配置：URL + 字段映射。不同服务可能返回 JSON 或纯文本 IP。
 			const apis = [
 				{
 					name: 'ipinfo.io',
@@ -24922,6 +24922,15 @@
 					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				}
 			];
+			const parseIpResponse = async (response, api) => {
+				const body = (await response.text()).trim();
+				if (!body) throw new Error(`${api.name} empty response`);
+				try {
+					return JSON.parse(body);
+				} catch {
+					return { ip: body.split(/\s+/)[0], loc: '未知' };
+				}
+			};
 
 			const requestTasks = apis.map(api => {
 				const controller = new AbortController();
@@ -24934,8 +24943,9 @@
 							signal: controller.signal
 						});
 						if (!response.ok) throw new Error(`HTTP ${response.status}`);
-						const { ip, loc } = api.parse(await response.json());
-						const edgeIp = ip || '未知';
+						const { ip, loc } = api.parse(await parseIpResponse(response, api));
+						const edgeIp = String(ip || '').trim();
+						if (!detectIpVersion(edgeIp)) throw new Error(`${api.name} invalid ip`);
 
 						return { edgeIp, loc, url: api.url };
 					})().catch(error => {
@@ -24945,25 +24955,31 @@
 				};
 			});
 
+			const overallTimeoutMs = NETWORK_API_TIMEOUT_MS + 1500;
+			let overallTimeoutId;
 			try {
-				const { edgeIp, loc } = await Promise.any(requestTasks.map(task => task.promise));
-				requestTasks.forEach(task => task.cancel && task.cancel());
+				const overallTimeout = new Promise((_, reject) => {
+					overallTimeoutId = setTimeout(() => reject(new Error(`overall timeout after ${overallTimeoutMs}ms`)), overallTimeoutMs);
+				});
+				const { edgeIp, loc } = await Promise.race([
+					Promise.any(requestTasks.map(task => task.promise)),
+					overallTimeout
+				]);
 				setNetworkFieldValue('overseas-ip', edgeIp, 'ip');
 				setNetworkFieldValue('overseas-country', loc || '未知', 'location');
 				applyNetworkCardFlag('overseas-country');
 				setStatus('status-overseas', 'success');
 				console.log(`[国外测试] 成功: IP=${edgeIp}, 位置=${loc}`);
-				return;
 			} catch (error) {
+				setNetworkFieldError('overseas-ip', '加载失败');
+				clearNetworkFieldValue('overseas-country');
+				applyNetworkCardFlag('overseas-country');
+				setStatus('status-overseas', 'error');
+				console.error('[国外测试] 所有API失败:', error);
+			} finally {
+				if (overallTimeoutId) clearTimeout(overallTimeoutId);
 				requestTasks.forEach(task => task.cancel && task.cancel());
 			}
-
-			// 所有 API 都失败
-			setNetworkFieldError('overseas-ip', '加载失败');
-			clearNetworkFieldValue('overseas-country');
-			applyNetworkCardFlag('overseas-country');
-			setStatus('status-overseas', 'error');
-			console.error('国外测试 所有API都失败');
 		}
 
 		// CloudFlare ProxyIP 卡片状态（支持双出口切换）
