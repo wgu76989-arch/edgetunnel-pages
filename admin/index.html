@@ -24369,6 +24369,20 @@
 			}
 		}
 
+		async function withNetworkTimeout(promise, label, timeoutMs = NETWORK_API_TIMEOUT_MS) {
+			let timeoutId;
+			try {
+				return await Promise.race([
+					promise,
+					new Promise((_, reject) => {
+						timeoutId = setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs);
+					})
+				]);
+			} finally {
+				if (timeoutId) clearTimeout(timeoutId);
+			}
+		}
+
 		function maskNetworkIpValue(ip) {
 			const value = String(ip || '').trim();
 			if (!value || value === '未知') return value;
@@ -24681,8 +24695,12 @@
 
 			const apis = [
 				{
-					name: 'cm-cf',
-					url: `https://api.ipapi.is/?q=${encodeURIComponent(requestIp)}`
+					name: 'ipinfo.io',
+					url: `https://ipinfo.io/${encodeURIComponent(requestIp)}/json`
+				},
+				{
+					name: 'ipwho.is',
+					url: `https://ipwho.is/${encodeURIComponent(requestIp)}`
 				}
 			];
 
@@ -24691,9 +24709,12 @@
 				if (!response.ok) {
 					throw new Error(`${api.name} HTTP ${response.status}`);
 				}
-				const data = await response.json();
+				const data = JSON.parse(await response.text());
 				if (!data || typeof data !== 'object') {
 					throw new Error(`${api.name} invalid payload`);
+				}
+				if (api.name === 'ipwho.is' && data.success === false) {
+					throw new Error(`${api.name} lookup failed`);
 				}
 				return data;
 			});
@@ -24907,6 +24928,11 @@
 			// API 配置：URL + 字段映射。不同服务可能返回 JSON 或纯文本 IP。
 			const apis = [
 				{
+					name: '自有 Worker',
+					url: `${OWN_PROBE_ENDPOINT}/ip.json`,
+					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
+				},
+				{
 					name: 'ipinfo.io',
 					url: 'https://ipinfo.io/json',
 					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
@@ -24915,11 +24941,6 @@
 					name: 'ipify IPv6/IPv4',
 					url: 'https://api64.ipify.org?format=json',
 					parse: d => ({ ip: d.ip, loc: '未知' })
-				},
-				{
-					name: '自有 Worker',
-					url: `${OWN_PROBE_ENDPOINT}/ip.json`,
-					parse: d => ({ ip: d.ip, loc: formatIpInfoLocation(d) })
 				}
 			];
 			const parseIpResponse = async (response, api) => {
@@ -24961,10 +24982,19 @@
 				const overallTimeout = new Promise((_, reject) => {
 					overallTimeoutId = setTimeout(() => reject(new Error(`overall timeout after ${overallTimeoutMs}ms`)), overallTimeoutMs);
 				});
-				const { edgeIp, loc } = await Promise.race([
+				const result = await Promise.race([
 					Promise.any(requestTasks.map(task => task.promise)),
 					overallTimeout
 				]);
+				const edgeIp = String(result.edgeIp || '').trim();
+				let loc = result.loc || '';
+				if (!loc || loc === '未知') {
+					try {
+						loc = formatIpInfoLocation(await withNetworkTimeout(fetchIpInfoByIp(edgeIp), `国外测试 ${edgeIp} 归属查询`));
+					} catch (error) {
+						console.log(`[国外测试] ${edgeIp} 归属查询失败: ${error.message}`);
+					}
+				}
 				setNetworkFieldValue('overseas-ip', edgeIp, 'ip');
 				setNetworkFieldValue('overseas-country', loc || '未知', 'location');
 				applyNetworkCardFlag('overseas-country');
