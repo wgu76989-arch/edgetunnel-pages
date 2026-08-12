@@ -24253,9 +24253,8 @@
 			{ id: 'twitter-country', type: 'location' }
 		];
 		const NETWORK_API_TIMEOUT_MS = 6180.3;
-		const NETWORK_BACKGROUND_START_DELAY_MS = 1200;
+		const NETWORK_BACKGROUND_START_DELAY_MS = 0;
 		const NETWORK_BACKGROUND_IDLE_TIMEOUT_MS = 2500;
-		const NETWORK_BACKGROUND_TASK_GAP_MS = 420;
 		const NETWORK_BACKGROUND_TASK_TIMEOUT_MS = (NETWORK_API_TIMEOUT_MS * 3) + 1200;
 		let networkInfoScheduled = false;
 		let networkInfoLoadPromise = null;
@@ -24307,13 +24306,7 @@
 			});
 		}
 
-		async function runNetworkInfoBackgroundTask(task, index) {
-			if (index > 0) {
-				await waitForDelay(NETWORK_BACKGROUND_TASK_GAP_MS);
-			}
-
-			await waitForBrowserIdle();
-
+		async function runNetworkInfoBackgroundTask(task) {
 			let watchdogId = null;
 			const watchdog = new Promise((_, reject) => {
 				watchdogId = setTimeout(() => {
@@ -25467,9 +25460,9 @@
 			];
 
 			networkInfoLoadPromise = (async () => {
-				for (let i = 0; i < networkTasks.length; i++) {
-					await runNetworkInfoBackgroundTask(networkTasks[i], i);
-				}
+				await Promise.allSettled(
+					networkTasks.map(task => runNetworkInfoBackgroundTask(task))
+				);
 
 				// 所有网络信息加载完成后,使 IP 可点击
 				setTimeout(() => {
