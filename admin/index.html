@@ -19087,6 +19087,9 @@
 					break;
 				}
 			}
+			// 兼容从订阅路径复制出的 /socks5://... 格式，避免保存后生成双协议前缀。
+			input = input.replace(/^\/(socks5|http|https|turn|sstp):\/\//i, '$1://');
+			input = input.replace(/^(socks5|http|https|turn|sstp):\/\//i, '');
 
 			// 移除末尾的备注（#符号之后的内容）
 			if (input.includes('#')) {
@@ -19998,7 +20001,36 @@
 					body: JSON.stringify(currentConfig)
 				});
 
-				if (!response.ok) throw new Error('保存失败');
+				let responseData = null;
+				try {
+					responseData = await response.json();
+				} catch (error) {
+					// Older Worker versions may return an empty response body.
+				}
+				if (!response.ok) throw new Error(responseData?.error || responseData?.message || `保存失败（HTTP ${response.status}）`);
+
+				if (section === 'proxy') {
+					const verifyResponse = await fetch('/admin/config.json?_verify=' + Date.now(), {
+						method: 'GET',
+						headers: {
+							'Cache-Control': 'no-cache, no-store, must-revalidate',
+							'Pragma': 'no-cache',
+							'Expires': '0'
+						}
+					});
+					if (!verifyResponse.ok) throw new Error(`保存后校验失败（HTTP ${verifyResponse.status}）`);
+					const savedConfig = await verifyResponse.json();
+					const expectedProxy = currentConfig.反代?.SOCKS5 || {};
+					const savedProxy = savedConfig.反代?.SOCKS5 || {};
+					const expectedEnabled = expectedProxy.启用 || null;
+					if (String(savedProxy.启用 || '') !== String(expectedEnabled || '') ||
+						Boolean(savedProxy.全局) !== Boolean(expectedProxy.全局) ||
+						(expectedEnabled && !String(savedProxy.账号 || '').trim())) {
+						throw new Error('服务器未正确保存 SOCKS5 配置，请查看网络或 Worker 日志');
+					}
+					currentConfig = savedConfig;
+					originalConfig = JSON.parse(JSON.stringify(savedConfig));
+				}
 				showToast('✅ 配置已保存，请更新订阅，才能获取最新节点内容！', 'success');
 				modifiedSections.delete(section);
 				updateButtonStates();
