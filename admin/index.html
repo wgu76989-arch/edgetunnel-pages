@@ -3685,6 +3685,7 @@
 
 			.module-footer .btn-online-optimize:not(.hidden-section),
 			.module-footer .btn-api-optimize:not(.hidden-section),
+			.module-footer .btn-chain-proxy:not(.hidden-section),
 			.module-footer .btn-chain-proxy:not(.hidden-section) {
 				flex: 1;
 				min-width: calc(50% - 5px);
@@ -4560,6 +4561,12 @@
 		.btn-chain-proxy:active {
 			transform: translateY(0);
 			box-shadow: 0 2px 10px rgba(139, 92, 246, 0.4);
+		}
+		
+		.btn-tunnel-proxy {
+			background: linear-gradient(135deg, #f59e0b 0, #ea580c 100%);
+			color: #fff;
+			box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4);
 		}
 
 		/* API优选模态框样式 */
@@ -9261,6 +9268,7 @@
 
 			.module-footer .btn-online-optimize:not(.hidden-section),
 			.module-footer .btn-api-optimize:not(.hidden-section),
+			.module-footer .btn-chain-proxy:not(.hidden-section),
 			.module-footer .btn-chain-proxy:not(.hidden-section) {
 				min-width: calc(50% - 3px);
 			}
@@ -18338,6 +18346,7 @@
 			// 显示或隐藏在线优选、订阅接口和链式代理按钮（仅在自定义优选模式下显示）
 			const onlineOptimizeBtn = document.getElementById('onlineOptimizeBtn');
 			const apiOptimizeBtn = document.getElementById('apiOptimizeBtn');
+			const tunnelProxyBtn = document.getElementById('tunnelProxyBtn');
 			if (onlineOptimizeBtn) {
 				if (mode === 'custom') {
 					onlineOptimizeBtn.classList.remove('hidden-section');
@@ -18352,6 +18361,13 @@
 					apiOptimizeBtn.classList.remove('hidden-section');
 				} else {
 					apiOptimizeBtn.classList.add('hidden-section');
+				}
+			}
+			if (tunnelProxyBtn) {
+				if (mode === 'custom') {
+					tunnelProxyBtn.classList.remove('hidden-section');
+				} else {
+					tunnelProxyBtn.classList.add('hidden-section');
 				}
 			}
 			updateChainProxyButtonVisibility(mode);
